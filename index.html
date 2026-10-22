@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Two TVs">
+<title>Two TVs</title>
+<style>
+  :root {
+    --bg: #0e0e12;
+    --panel: #18181f;
+    --btn: #25252f;
+    --btn-active: #3a3a48;
+    --text: #f2f2f5;
+    --muted: #8a8a99;
+    --accent: #7c5cff;
+    --ok: #2fbf71;
+    --err: #ff5c5c;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  body { padding: calc(env(safe-area-inset-top) + 8px) 8px calc(env(safe-area-inset-bottom) + 8px);
+    user-select: none; -webkit-user-select: none; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px 10px; }
+  header h1 { font-size: 17px; margin: 0; }
+  .icon-btn { background: none; border: 0; color: var(--muted); font-size: 22px; padding: 4px 8px; }
+
+  .tvs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tv { background: var(--panel); border-radius: 16px; padding: 10px 8px; display: flex; flex-direction: column; gap: 8px; }
+  .tv-head { display: flex; align-items: center; gap: 6px; padding: 0 2px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; transition: background .2s; }
+  .dot.ok { background: var(--ok); }
+  .dot.err { background: var(--err); }
+  .tv-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  button.k { background: var(--btn); color: var(--text); border: 0; border-radius: 12px;
+    font-size: 15px; height: 44px; padding: 0; touch-action: manipulation; }
+  button.k:active { background: var(--btn-active); transform: scale(.96); }
+  .row { display: grid; gap: 6px; }
+  .r2 { grid-template-columns: 1fr 1fr; }
+  .r3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .pad .ok-btn { background: var(--accent); font-weight: 700; }
+  .power { color: var(--err); }
+
+  .vol { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .vol .stack { display: grid; gap: 6px; }
+  .label { font-size: 11px; color: var(--muted); text-align: center; margin-top: -2px; }
+
+  .apps { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .apps button.k { font-size: 13px; height: 38px; }
+
+  /* settings */
+  dialog { background: var(--panel); color: var(--text); border: 0; border-radius: 16px; width: min(92vw, 420px); padding: 18px; }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  dialog h2 { margin: 0 0 12px; font-size: 18px; }
+  dialog fieldset { border: 1px solid #2c2c38; border-radius: 12px; margin: 0 0 12px; padding: 10px 12px; }
+  dialog legend { color: var(--muted); font-size: 12px; padding: 0 4px; }
+  dialog label { display: block; font-size: 13px; color: var(--muted); margin: 6px 0 4px; }
+  dialog input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid #2c2c38;
+    border-radius: 10px; padding: 10px; font-size: 16px; }
+  dialog .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+  dialog .actions button { border: 0; border-radius: 10px; padding: 10px 16px; font-size: 15px; }
+  .primary { background: var(--accent); color: white; }
+  .secondary { background: var(--btn); color: var(--text); }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.4; margin: 0 0 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Two TVs</h1>
+  <button class="icon-btn" id="open-settings" aria-label="Settings">⚙︎</button>
+</header>
+
+<main class="tvs" id="tvs"></main>
+
+<dialog id="settings">
+  <form method="dialog" id="settings-form">
+    <h2>Your TVs</h2>
+    <p class="hint">On each TV: Settings → Network → About → IP address. Your phone must be on the same Wi-Fi.</p>
+    <fieldset>
+      <legend>TV 1</legend>
+      <label for="name0">Name</label><input id="name0" placeholder="Living room">
+      <label for="ip0">IP address</label><input id="ip0" placeholder="192.168.1.40" inputmode="decimal">
+    </fieldset>
+    <fieldset>
+      <legend>TV 2</legend>
+      <label for="name1">Name</label><input id="name1" placeholder="Bedroom">
+      <label for="ip1">IP address</label><input id="ip1" placeholder="192.168.1.41" inputmode="decimal">
+    </fieldset>
+    <div class="actions">
+      <button value="cancel" class="secondary">Cancel</button>
+      <button value="save" class="primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<template id="tv-template">
+  <section class="tv">
+    <div class="tv-head"><span class="dot"></span><span class="tv-name"></span></div>
+
+    <div class="row r3">
+      <button class="k power" data-key="Power">⏻</button>
+      <button class="k" data-key="Home">⌂</button>
+      <button class="k" data-key="Back">↩</button>
+    </div>
+
+    <div class="pad">
+      <span></span><button class="k" data-key="Up">▲</button><span></span>
+      <button class="k" data-key="Left">◀</button><button class="k ok-btn" data-key="Select">OK</button><button class="k" data-key="Right">▶</button>
+      <span></span><button class="k" data-key="Down">▼</button><span></span>
+    </div>
+
+    <div class="row r3">
+      <button class="k" data-key="Rev">⏪</button>
+      <button class="k" data-key="Play">⏯</button>
+      <button class="k" data-key="Fwd">⏩</button>
+    </div>
+
+    <div class="vol">
+      <div class="stack">
+        <button class="k" data-key="VolumeUp" data-repeat>＋</button>
+        <button class="k" data-key="VolumeDown" data-repeat>－</button>
+        <div class="label">Vol</div>
+      </div>
+      <div class="stack">
+        <button class="k" data-key="ChannelUp">▲</button>
+        <button class="k" data-key="ChannelDown">▼</button>
+        <div class="label">Ch</div>
+      </div>
+    </div>
+    <button class="k" data-key="VolumeMute">Mute</button>
+
+    <div class="apps"></div>
+  </section>
+</template>
+
+<script>
+  // Roku channel IDs. Edit this list to change the app buttons.
+  const APPS = [
+    { name: 'Netflix', id: 12 },
+    { name: 'YouTube', id: 837 },
+    { name: 'Hulu', id: 2285 },
+    { name: 'Disney+', id: 291097 },
+    { name: 'Prime', id: 13 },
+    { name: 'Max', id: 61322 },
+    { name: 'Peacock', id: 593099 },
+    { name: 'Apple TV', id: 551012 },
+  ];
+
+  const STORAGE_KEY = 'two-tvs-config';
+  const DEFAULT_TVS = [{ name: 'TV 1', ip: '' }, { name: 'TV 2', ip: '' }];
+
+  function loadTvs() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || DEFAULT_TVS; }
+    catch { return DEFAULT_TVS; }
+  }
+  function saveTvs(tvs) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tvs)); } catch {}
+  }
+
+  let tvs = loadTvs();
+
+  // Roku ECP doesn't send CORS headers, so we fire with no-cors: the request
+  // reaches the TV but we can't read the reply. A rejected fetch means the TV
+  // was unreachable (wrong IP, not on Wi-Fi, or the browser blocked it).
+  async function ecp(tvIndex, path, dot) {
+    const ip = tvs[tvIndex].ip.trim();
+    if (!ip) { openSettings(); return; }
+    try {
+      await fetch(`http://${ip}:8060/${path}`, { method: 'POST', mode: 'no-cors' });
+      flash(dot, 'ok');
+    } catch (e) {
+      console.warn('ECP failed', ip, path, e);
+      flash(dot, 'err');
+    }
+  }
+
+  function flash(dot, cls) {
+    dot.classList.remove('ok', 'err');
+    dot.classList.add(cls);
+    clearTimeout(dot._t);
+    dot._t = setTimeout(() => dot.classList.remove(cls), cls === 'err' ? 3000 : 600);
+  }
+
+  function render() {
+    const root = document.getElementById('tvs');
+    root.innerHTML = '';
+    const tpl = document.getElementById('tv-template');
+    tvs.forEach((tv, i) => {
+      const el = tpl.content.firstElementChild.cloneNode(true);
+      const dot = el.querySelector('.dot');
+      el.querySelector('.tv-name').textContent = tv.name || `TV ${i + 1}`;
+
+      const apps = el.querySelector('.apps');
+      APPS.forEach(app => {
+        const b = document.createElement('button');
+        b.className = 'k';
+        b.textContent = app.name;
+        b.dataset.launch = app.id;
+        apps.appendChild(b);
+      });
+
+      el.querySelectorAll('button[data-key]').forEach(b => {
+        const send = () => ecp(i, `keypress/${b.dataset.key}`, dot);
+        if (b.hasAttribute('data-repeat')) bindRepeat(b, send);
+        else b.addEventListener('click', send);
+      });
+      el.querySelectorAll('button[data-launch]').forEach(b => {
+        b.addEventListener('click', () => ecp(i, `launch/${b.dataset.launch}`, dot));
+      });
+
+      root.appendChild(el);
+    });
+  }
+
+  // Press and hold volume to keep stepping.
+  function bindRepeat(btn, send) {
+    let timer, interval;
+    const stop = () => { clearTimeout(timer); clearInterval(interval); };
+    btn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      send();
+      timer = setTimeout(() => { interval = setInterval(send, 150); }, 400);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
+  }
+
+  const dialog = document.getElementById('settings');
+  function openSettings() {
+    tvs.forEach((tv, i) => {
+      document.getElementById(`name${i}`).value = tv.name;
+      document.getElementById(`ip${i}`).value = tv.ip;
+    });
+    dialog.showModal();
+  }
+  dialog.addEventListener('close', () => {
+    if (dialog.returnValue !== 'save') return;
+    tvs = tvs.map((_, i) => ({
+      name: document.getElementById(`name${i}`).value.trim() || `TV ${i + 1}`,
+      ip: document.getElementById(`ip${i}`).value.trim(),
+    }));
+    saveTvs(tvs);
+    render();
+  });
+  document.getElementById('open-settings').addEventListener('click', openSettings);
+
+  render();
+  if (!tvs.some(tv => tv.ip)) openSettings();
+</script>
+</body>
+</html>
